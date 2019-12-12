@@ -20,6 +20,9 @@ class OccupiedSquare(Exception):
 class InvalidPosition(Exception):
     pass
 
+class InvalidPieceFace(Exception):
+    pass
+
 def _invert(dic):
     return {v: k for k, v in dic.items()}
 
@@ -64,13 +67,16 @@ class Board:
 
     def set_initial_position(self):
         self.clear_board()
-        self[Position.from_str('d4')].place(Piece(light))
-        self[Position.from_str('e4')].place(Piece(dark))
-        self[Position.from_str('d5')].place(Piece(dark))
-        self[Position.from_str('e5')].place(Piece(light))
+        self['d4'].place(Piece(light))
+        self['e4'].place(Piece(dark))
+        self['d5'].place(Piece(dark))
+        self['e5'].place(Piece(light))
 
     def __getitem__(self, position):
+        if isinstance(position, str):
+            position = Position.from_str(position)
         return self._squares[position.y][position.x]
+
 
 class _Light():
     _singleton = None
@@ -94,11 +100,18 @@ class _Dark():
 light = _Light()
 dark = _Dark()
 
+def parse_piece_face(s):
+    if s in {'light', 'l', 'L'}:
+        return light
+    if s in {'dark', 'd', 'D'}:
+        return dark
+    raise InvalidPieceFace
+
 class Piece:
     def __init__(self, face=light):
         self.face = face
         self.flip_count = 0
     def flip(self):
-        self.face = face.complement()
+        self.face = self.face.complement()
         self.flip_count += 1
 
