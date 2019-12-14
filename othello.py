@@ -1,3 +1,6 @@
+from time import time
+from functools import singledispatch
+
 class Game:
     def __init__(self):
         self.board = Board()
@@ -5,6 +8,7 @@ class Game:
 class Square:
     def __init__(self):
         self.piece = None
+        self.placed_at = None
     def is_empty(self):
         return self.piece is None
     def is_occupied(self):
@@ -13,6 +17,7 @@ class Square:
         if self.is_occupied():
             raise OccupiedSquare
         self.piece = piece
+        self.occupied_at = time()
 
 class OccupiedSquare(Exception):
     pass
@@ -30,7 +35,7 @@ class Position:
 
     _col_table = {chr(ord('a') + i): i for i in range(8)}
     _col_table_inv = _invert(_col_table)
-    
+
     _row_table = {str(i+1): i for i in range(8)}
     _row_table_inv = _invert(_row_table)
 
@@ -47,23 +52,51 @@ class Position:
         return Position(x, y)
 
     def __init__(self, x, y):
-        assert 0 <= x < 8
-        assert 0 <= y < 8
+        try:
+            assert 0 <= x < 8
+            assert 0 <= y < 8
+        except AssertionError:
+            raise InvalidPosition
         self.x = x
         self.y = y
 
     def __str__(self):
         return f'{self._col_table_inv[self.x]}{self._row_table_inv[self.y]}'
 
+@singledispatch
+def as_position(arg):
+    raise InvalidPosition
+
+@as_position.register
+def _(arg: Position):
+    return arg
+
+@as_position.register
+def _(arg: str):
+    return Position.from_str(arg)
+
+@as_position.register
+def _(arg: tuple):
+    if len(arg) != 2:
+        raise InvalidPosition
+    x, y = arg
+    if not isinstance(x, int) or not isinstance(y, int):
+        raise InvalidPosition
+    return Position(x, y)
+
 class Board:
-    def __init__(self, empty=False):
-        if empty:
-            self.clear_board()
-        else:
+    def __init__(self, initial_position=True):
+        self._squares = [[Square() for _j in range(8)] for _i in range(8)]
+        if initial_position:
             self.set_initial_position()
 
+    def squares(self):
+        """Return an iterator over the squares on the Board."""
+        return ((Position(x,y), self._squares[y][x]) for x in range(8) for y in range(8))
+
     def clear_board(self):
-        self._squares = [[Square() for _j in range(8)] for _i in range(8)]
+        for pos, _ in self.squares():
+            self[pos] = Square()
 
     def set_initial_position(self):
         self.clear_board()
@@ -72,10 +105,14 @@ class Board:
         self['d5'].place(Piece(dark))
         self['e5'].place(Piece(light))
 
-    def __getitem__(self, position):
-        if isinstance(position, str):
-            position = Position.from_str(position)
+    def __getitem__(self, key):
+        position = as_position(key)
         return self._squares[position.y][position.x]
+
+    def __setitem__(self, key, value):
+        position = as_position(key)
+        self._squares[position.y][position.x] = value
+
 
 
 class _Light():
