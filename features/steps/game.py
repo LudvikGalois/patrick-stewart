@@ -1,11 +1,13 @@
 from behave import *
 from othello import Game, Position, parse_piece_face
 
-@given('we have a new game')
+
+@given("we have a new game")
 def step_impl(context):
     context.game = Game()
 
-@then('there is a {colour} piece at {position}')
+
+@then("there is a {colour} piece at {position}")
 def step_impl(context, colour, position):
     game = context.game
     board = game.board
